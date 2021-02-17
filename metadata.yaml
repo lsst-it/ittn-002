@@ -13,7 +13,7 @@ serial_number: '002'
 doc_id: 'ITTN-002'
 
 # Title of the document, without the series/serial designation
-doc_title: '[Proposed] LSST On-Prem Deployment Platform'
+doc_title: 'LSST On-Prem Deployment Platform'
 
 # Author names, ordered as a list. Each author name should be formatted as 'First Last'
 authors:

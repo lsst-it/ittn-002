@@ -1,4 +1,4 @@
-:tocdepth: 1
+:tocdepth: 2
 
 .. Please do not modify tocdepth; will be fixed when a new Sphinx theme is shipped.
 
@@ -61,16 +61,25 @@ Non-Goals
 Sites
 =====
 
-The following sites shall be considered “on-prem” deployment locations:
+The following sites shall be considered the canonical list of “on-prem”
+deployment locations:
 
-* Summit
-* Base
-* Tucson
+===================== ============
+Location              Abbreviation
+===================== ============
+Summit / Cerro Pachón ``cp``
+Base / La Serena      ``ls``
+Tucson                ``tu`` (``tuc`` is depreciated)
+Development (@BDC)    ``dev``
+===================== ============
 
 It is expected that hardware deployed at each site will evolve separately, but
 following a common design, to meet the needs of the application deployed at
 that location.  The initial “seed” system deployed at each location is
 envisioned to be identical.
+
+The above listed abbreviations shall be used to refer to these sites in
+configuration management code, as DNS sub-domains, etc.
 
 Core services
 =============
@@ -96,6 +105,8 @@ basic items that should be managed are:
 Due to existing team knowledge with Puppet, it is an uncontroversial choice as
 the host level CM tool.
 
+See `ITTN-005: Puppet Standards and Practices <https://ittn-005.lsst.io/>`_
+
 Bare-metal Provisioning
 -----------------------
 
@@ -112,25 +123,61 @@ provisioning is a key component in being able to recover from a “disaster”.
 
 Due to its ability to manage all of the services necessary to support
 bare-metal provisioning, Eg., PXE booting, DNS, DHCP, tftp, and its integration
-with puppet, we propose TheForeman be selected to manage:
+with puppet, we have selected `TheForeman <https://www.theforeman.org/>`_ as a
+single tool to provide:
 
 * PXE boot/provisioning
 * DNS/DHCP management
 * Puppet “external node classifier”
 * Puppet agent report processor
 
+Low-level Foreman deployment details are covered in `ITTN-011: Bootstrapping the
+Deployment Platform <https://ittn-011.lsst.io/>`_.
+
 Self-serve bare-metal
 ^^^^^^^^^^^^^^^^^^^^^
 
 As the LSST on-prem application environment currently involves a lot of
 “bare-metal”, it is important to provide a means for end-use engineers to
-[re-]provision a server without requiring
+[re-]provision a server without requiring physically laying hands on hardware.
 
 DHCP
 ----
 
 A universal core network service which is also needed to facilitate PXE boot.
-ISC dhcpd is a very common package.
+`ISC dhcpd <https://www.isc.org/dhcp/>`_ is a very common package and seems to
+be the only fully open source dhcp server implementation that has good
+integration with ``foreman``.  This is unfortunate as the API of this
+implementation leaves much to be desired and the ``dhcpd.leases`` file has to
+be parsed in order to determine the state of the service.
+
+While ISC dhcpd is the only best option for the moment, we should consider
+switching to `ISC Kea <https://www.isc.org/kea/>`_ as soon as there is a viable
+foreman plugin available for it. We should also consider contributing to the
+development of such a plugin.
+
+Puppet code in the `lsst-it/lsst-itconf
+<https://github.com/lsst-it/lsst-itconf>`_ repo is the canonical source for
+DHCP configuration.  E.g.: `site/ls/role/foreman.yaml
+<https://github.com/lsst-it/lsst-itconf/blob/master/hieradata/site/ls/role/foreman.yaml>`_
+
+Static IPs
+^^^^^^^^^^
+
+In general, DHCP leases/reservations should be used for most addressing. There
+are only a few exceptions in which statically assigned IP addresses should be
+used. Namely:
+
+* BMCs on on the core nodes. As the core hypervisor host the VMs which provide DHCP, it is a bootstraping issue to use DHCP for these hosts.
+* The FQDN/management IPs of the core hypervisor hosts.
+* Management interfaces and gateways on devices doing layer3 forwarding.
+* The IPs of forward name resolvers, presumably running on VMs.
+* Secondary IPs on hosts which can't be assigned via DHCP due to duplicate MAC addresses.
+* It may make sense to use static IPs for auth service (TBD)
+
+For virtually everything else, we should relying on service discovery via DNS
+and keep IP addressing flexible.  That includes some management devices such as
+switched PDUs.
 
 DNS
 ---
@@ -138,6 +185,16 @@ DNS
 Automated management of forward and reverse DNS greatly streamlines
 provisioning.  The default choice is often ISC bind but an alternative is to
 use a cloud hosted service such as route53 with onsite caching nameservers.
+
+We have decided to use ``route53``, initially, across all sites due to
+historical problems with "private" DNS zones and cross site/remote access.  See
+"Split-View DNS and VPNs" in `ITTN-004: LSST On-Prem Domain Name Service (DNS)
+<https://ittn-004.lsst.io/>`_ for a more detailed discussion.
+
+Note that reliable on-site name resolution will have to be provided at the
+summit prior to the start of operations.  See "Summit Degraded Operations" in
+`ITTN-004: [Proposed] LSST On-Prem Domain Name Service (DNS)
+<https://ittn-004.lsst.io/>`_.
 
 Identity Management
 -------------------
@@ -159,9 +216,11 @@ An LDAP implementation needs to be provided, at the very minimum:
 * A means for end-users to change their own account’s passwords and ssh key set
 * Replication (to provide redundancy)
 
-We propose the select of freeIPA as an LDAP service and user self-service
-portal.  freeIPA has been well “battle tested” in large enterprises under
-RedHat Identity Management brand.
+We have selected `freeIPA <https://www.freeipa.org>`_ as the LDAP (and k5)
+service and user self-service portal.  freeIPA has been well “battle tested” in
+large enterprises under RedHat Identity Management brand.
+
+See `ITTN-010: User Identification and Authorization <https://ittn-010.lsst.io/>`_.
 
 Oauth2/OpenID Connect (OIDC)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,67 +240,119 @@ prepared to propose a specific solution, these are popular options:
 Log Aggregation
 ---------------
 
-https://www.graylog.org/
+`graylog <https://www.graylog.org>`_ is a comfortable choice for managing system logs as it is more "syslog" focused that many of the other currently populate general log management stacks.
 
-May be deployed on k8s as log collection is not critical for bootstrapping the
-platform environment.
+Due to the heavy footprint of graylog and elastic search, it should be deployed on a k8s external to the core nodes.
+
+See `ITTN-012: Graylog k8s deployment and configuration <https://ittn-012.lsst.io>`_.
 
 Monitoring
 ----------
 
-Internal
-^^^^^^^^
+For core system operations we require a monitoring system that will do basic
+up/down monitoring of hosts and generate notifications for state changes.
 
-https://www.influxdata.com/time-series-platform/telegraf/
+We have selected `Icinga <https://icinga.com/>`_ to serve this role due its
+popularity and familarity to past users of Nagios.
 
-May be deployed on k8s as monitoring is not critical for bootstrapping the
-platform environment.
+See `ITTN-027: Monitoring over Icinga2 <https://ittn-027.lsst.io/>`_.
 
-External
-^^^^^^^^
+Artifact Repositories/Mirrors
+-----------------------------
 
-https://icinga.com/
+At least the summit will require an on-site binary artifcat and docker image
+repos in order to be able to continue operations without external network
+connectivity.  In addition, we desire the ability to maintain on-site mirrors
+of OS packages in order to improve the speed and reliability of provisioning
+and updates.
 
-Kubernetes
-----------
-
-High-availability
-^^^^^^^^^^^^^^^^^
-
-Deployment
-^^^^^^^^^^
-
-load-balancer
-^^^^^^^^^^^^^
-
-auth
-^^^^
-
-Storage
--------
-
-Block storage (k8s)
-^^^^^^^^^^^^^^^^^^^
-
-Cephfs/NFS
-^^^^^^^^^^
-
-Object Storage (s3)
-^^^^^^^^^^^^^^^^^^^
-
-Package Repository/Mirrors
---------------------------
+We well need to be able to host at least these types of repos:
 
 * Docker images
 * OS Yum mirrors
 * Yum repos for inhouse software
 * Misc. binary artifacts needed for deployment
 
+The project has formaly selected the open source variant of `Nexus Repository
+Manager <https://www.sonatype.com/nexus-repository-oss>`_ for deploying
+observatory control software. See: `LSE-150 Control Software Architecture
+<https://lse-150.lsst.io/>`_.
+
+This requires that an instance of Nexus is maintained, at a minimum, at the
+summit.  We believe that the ultimate architecture will be to maintain a more
+publicly accessible instance for developers to push artifacts too. For example,
+using the current development instance as the "canonical" repos
+`repo-nexus.lsst.org/nexus/ <https://repo-nexus.lsst.org/nexus/>`_ which are
+then mirrored to a summit instance.  We also envision that nexus will be
+deployed upon kubernetes.
+
+However, we would like to maintain the possiblity of using a different package
+for maintaining mirrors of upstream software that is seperate from the nexus
+instance(s) used for hosting project produced artifacts. Of concern, is that it
+may not be possible to configure nexus to mirror the entirity of a yum repo,
+which may result in only frequently accessed packages being cached within a
+nexus "proxy" repo instance.
+
+We note that that `Pulp <https://pulpproject.org/>`_ is a popular option for
+maintaining complete mirrors of yum repositories and the a `kubernetes operator
+for pulp <https://github.com/pulp/pulp-operator>`_ is under active development.
+
+Rancher
+-------
+
+As we are planning to deploy some core services, E.g., ``graylog``, upon
+Kubernetes, we need a means of managing k8s authentication and authorization
+because "out of the box" `k8s does not provide a means of integrating with LDAP
+<https://kubernetes.io/docs/reference/access-authn-authz/authentication/>`_ or
+IPA.
+
+`rancher <https://rancher.com/products/rancher/>`_ has been selected to provide
+a k8s management dashboard and to handle authn/authz integration with freeipa.
+Rancher is essentially the only fully open source management solution that
+works with "vanilla" k8s clusters.  We also appreciate that commercial support
+for Rancher is available.
+
+We initially intended for there to be only a single instance of rancher running
+at the summit, which would manage kubernetes clusters across all sites. This
+was primarily motivated as a means of reducing cost should we decided to
+purchase a support agreement.  However, with the ongoing shutdown of the
+summit, we have switched to a "rancher per site" model. Where the site rancher
+handles all k8s clusters local to that site.
+
+Kubernetes
+==========
+
+We determined that these were the desirable properties of a k8s distribution/installer.
+
+* Support for bare metal
+* Fully opensource
+* Active user community
+* Commercial support option
+
+There are many kubernetes deployment options, including the official
+``kubeadm`` utility. However, it was difficult to find any option that met all
+of those goals in 2019.  The only identified product to check all of the boxes
+was `rke <https://rancher.com/products/rke/>`_.
+
+Our scheme for deployment is to use ``puppet`` to prepare k8s nodes with all of
+the prerequisites for for a functioning cluster and to install ``rke``. However,
+the ``rke`` cli is manually invoked from the command line to create, update,
+and destroy k8s cluster.
+
+The `lsst-it/k8s-cookbook <https://github.com/lsst-it/k8s-cookbook>`_ repo
+contains ``README.md`` files with instructions on how to [re]create our various
+k8s clusters.
+
+
+Core Deployment
+===============
+
+
 Node Types
 ==========
 
-.. figure:: /_static/seed_cluster.png
-   :name: fig-seed-cluster
+.. figure:: /_static/core_cluster.png
+   :name: fig-core-cluster
    :alt: graph of nodes and services in a minimal "seed" cluster
 
 Common to all node types
@@ -385,6 +496,8 @@ PTP/NTP
 
 At least one ``stratum 1`` time source local to the site shall be available.
 
+See also: `ITTN-009: Summit Time Synchronization <https://ittn-009.lsst.io/>`_
+
 Hardware Spares
 ===============
 
@@ -412,52 +525,13 @@ specific backup.  The foreman configuration database, which will include
 hostname, IPs, mac addresses, disk partitioning templates, etc. will need to be
 backed up off site. The backup process is TBD.
 
-LDAP
-----
+IPA/LDAP
+--------
 
 .. figure:: /_static/ldap_replication.png
    :name: fig-ldap-replication
    :alt: graph of multi-site ldap replication
 
-LDAP services should be federated/replicated across all sites at which
+IPA/LDAP services should be federated/replicated across all sites at which
 “on-prem” software will be deployed. Recovery shall consist of re-provisioning
 a freeIPA instance and re-establishing replication with other instances.
-
-UIDs/GIDs
----------
-
-* 61000-61999 is reserved for DM / "archive" related role accounts
-
-======== ============
-UID      username
-======== ============
-61000    arc
-61001    (reserved/unused)
-61002    atadbot
-======== ============
-
-======== ============
-GID      groupname
-======== ============
-61000    arc
-61001    (reserved/unused)
-61002    atadbot
-======== ============
-
-* 62000-62999 is reserved for Camera / CCS related role accounts
-
-======== ============
-UID      username
-======== ============
-62000    ccs
-62001    ccsadm
-======== ============
-
-======== ============
-GID      groupname
-======== ============
-62000    ccs
-62001    ccsadm
-======== ============
-
-* 70000-79999 is used for general users/groups in freeipa

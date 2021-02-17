@@ -1,0 +1,172 @@
+digraph top {
+//  dpi=100
+  ranksep=0.5
+  rankdir=TB
+  overlap=false
+  newrank=true
+  clusterrank=local
+
+  // services
+  {
+    node [shape=ellipse fontsize=14 style=filled fillcolor=white color=darkgreen fontcolor=darkgreen]
+    app1 [label="user apps"]
+    app2 [label="user apps"]
+    app3 [label="user apps"]
+    etcd1 [label="etcd"]
+    etcd2 [label="etcd"]
+    etcd3 [label="etcd"]
+    oidc1 [label="oicd"]
+    oidc2 [label="oicd"]
+    ceph1 [label="ceph"]
+    ceph2 [label="ceph"]
+    ceph3 [label="ceph"]
+    minio1 [label="minio"]
+    minio2 [label="minio"]
+    minio3 [label="minio"]
+  }
+
+  subgraph cluster_1 {
+    label="kubernetes cluster"
+    fontsize=18
+    style=dashed
+
+    subgraph cluster_40 {
+      label="worker3"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      etcd3
+      app3
+    }
+
+    subgraph cluster_50 {
+      label="worker2"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      etcd2
+      app2
+      oidc2
+    }
+
+    subgraph cluster_60 {
+      label="worker1"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      etcd1
+      app1
+      oidc1
+    }
+
+    subgraph cluster_70 {
+      label="storage3"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      subgraph cluster_700 {
+        label="rook"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        ceph3
+        minio3
+      }
+    }
+
+    subgraph cluster_80 {
+      label="storage2"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      subgraph cluster_800 {
+        label="rook"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        ceph2
+        minio2
+      }
+    }
+
+    subgraph cluster_90 {
+      label="storage1"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      subgraph cluster_900 {
+        label="rook"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        ceph1
+        minio1
+      }
+    }
+
+    {
+      rank=same
+      edge [color=lightblue dir=both]
+      ceph1 -> ceph2
+      ceph2 -> ceph3
+      ceph3 -> ceph1
+    }
+
+
+    {
+      rank=same
+      minio1
+      minio2
+      minio3
+    }
+
+    {
+      rank=same
+      edge [color=lightblue dir=both]
+      etcd1 -> etcd2
+      etcd2 -> etcd3
+      etcd3 -> etcd1
+    }
+
+
+    {
+      rank=same
+      app1
+      app2
+      app3
+    }
+
+    {
+      rank=same
+      oidc1
+      oidc2
+    }
+  }
+
+  // make graph look pretty... not real relationships
+  {
+    edge [constraint=true style=invis]
+    etcd1 -> oidc1
+    oidc1 -> app1
+    app1 -> ceph1
+    ceph1 -> minio1
+  }
+}

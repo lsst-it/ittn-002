@@ -8,21 +8,27 @@ digraph top {
 
   {
     node [shape=ellipse fontsize=12 style=filled fillcolor=white color=darkgreen fontcolor=darkgreen]
-    base [label="base"]
-    summit [label="summit"]
-    tucson [label="tucson"]
-    cloud [label="cloud"]
+    base [label="base (ls)"]
+    summit [label="summit (cp)"]
+    tucson [label="tucson (tu)"]
+    cloud [label="cloud (tbd)"]
+    dev [label="dev (dev)"]
   }
 
   {
     edge [color=lightblue dir=both]
-    base -> summit
-    base -> tucson
-    base -> cloud
+    base -> summit [dir=both]
+    base -> tucson [dir=both]
+    base -> cloud [dir=both]
+    base -> dev [dir=both]
 
-    summit -> tucson
-    summit -> cloud
+    summit -> tucson [dir=both]
+    summit -> cloud [dir=both]
+    summit -> dev [dir=both]
 
-    tucson -> cloud
+    tucson -> cloud [dir=both]
+    tucson -> dev [dir=both]
+
+    dev -> cloud [dir=both]
   }
 }

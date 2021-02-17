@@ -1,0 +1,228 @@
+digraph top {
+//  dpi=100
+  ranksep=0.5
+  rankdir=TB
+  overlap=false
+  newrank=true
+  clusterrank=local
+
+  // services
+  {
+    node [shape=ellipse fontsize=14 style=filled fillcolor=white color=darkgreen fontcolor=darkgreen]
+    foreman
+    puppet
+    tftp
+    dns1 [label="dns1"]
+    dns2 [label="dns2"]
+    dns3 [label="dns3"]
+    dhcp1 [label="dhcp"]
+    ipa1 [label="ipa1"]
+    ipa2 [label="ipa2"]
+    ipa3 [label="ipa3"]
+    icingamaster [label="icinga\nmaster"]
+    puppetdb [label="puppetdb"]
+    rancher1 [label="rancher1"]
+    rancher2 [label="rancher2"]
+    rancher3 [label="rancher3"]
+  }
+
+  subgraph cluster_0 {
+    label="control cluster"
+    fontsize=18
+    style=dashed
+
+    subgraph cluster_10 {
+      label="core1"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      {
+        rank=same
+        dns1
+        ipa1
+        rancher1
+        foreman
+        dhcp1
+        puppet
+        tftp
+      }
+
+      subgraph cluster_100 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        dns1
+      }
+
+      subgraph cluster_101 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        ipa1
+      }
+
+      subgraph cluster_102 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        rancher1
+      }
+
+      subgraph cluster_103 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        foreman
+        puppet
+        tftp
+        dhcp1
+      }
+    }
+
+    subgraph cluster_20 {
+      label="core2"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      {
+        rank=same
+        dns2
+        ipa2
+        rancher2
+        icingamaster
+      }
+
+      subgraph cluster_200 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        dns2
+      }
+
+      subgraph cluster_201 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        ipa2
+      }
+
+      subgraph cluster_202 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        rancher2
+      }
+
+      subgraph cluster_203 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        icingamaster
+      }
+    }
+
+    subgraph cluster_30 {
+      label="core3"
+      color=dimgray
+      fontcolor=dimgray
+      fontsize=12
+      style=bold
+
+      {
+        rank=same
+        dns3
+        ipa3
+        rancher3
+        icingamaster
+        puppetdb
+      }
+
+      subgraph cluster_300 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        dns3
+      }
+
+      subgraph cluster_301 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        ipa3
+      }
+
+      subgraph cluster_302 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        rancher3
+      }
+
+      subgraph cluster_303 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        icingamaster
+      }
+
+      subgraph cluster_304 {
+        label="vm"
+        color=darkgoldenrod
+        fontcolor=darkgoldenrod
+        fontsize=12
+        style=dotted
+
+        puppetdb
+      }
+    }
+
+    edge [color=lightblue]
+    ipa1 -> ipa2 [dir=both]
+    ipa2 -> ipa3 [dir=both]
+    ipa3 -> ipa1 [dir=both]
+    puppet -> puppetdb
+    rancher1 -> rancher2 [dir=both]
+    rancher2 -> rancher3 [dir=both]
+    rancher3 -> rancher1 [dir=both]
+  }
+}
